@@ -1,19 +1,21 @@
 const CONFIG = {
-  symbol: 'EURUSD=X',
+  symbol: 'EUR/USD',
   displaySymbol: 'EUR/USD',
-  yahooRange: '5d',
-  yahooInterval: '5m',
+  twelveDataInterval: '5min',
+  outputSize: 500,
   refreshMs: 60_000,
   requestTimeoutMs: 12_000,
-  yahooChartUrl(symbol) {
+  storageKey: 'maxxwebHighstock.twelveDataApiKey',
+  twelveDataUrl(symbol, apiKey) {
     const params = new URLSearchParams({
-      range: this.yahooRange,
-      interval: this.yahooInterval,
-      includePrePost: 'false',
-      events: 'div,splits'
+      symbol,
+      interval: this.twelveDataInterval,
+      outputsize: String(this.outputSize),
+      order: 'ASC',
+      apikey: apiKey
     });
 
-    return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?${params}`;
+    return `https://api.twelvedata.com/time_series?${params}`;
   }
 };
 
@@ -26,8 +28,47 @@ const state = {
 const elements = {
   statusText: document.getElementById('feedStatus'),
   statusDot: document.getElementById('statusDot'),
-  symbolSelector: document.getElementById('symbolSelector')
+  symbolSelector: document.getElementById('symbolSelector'),
+  apiKeyButton: document.getElementById('apiKeyButton'),
+  clearApiKeyButton: document.getElementById('clearApiKeyButton')
 };
+
+function getApiKey() {
+  return window.localStorage.getItem(CONFIG.storageKey) || '';
+}
+
+function saveApiKey(apiKey) {
+  window.localStorage.setItem(CONFIG.storageKey, apiKey.trim());
+}
+
+function clearApiKey() {
+  window.localStorage.removeItem(CONFIG.storageKey);
+}
+
+function promptForApiKey() {
+  const existingKey = getApiKey();
+  const value = window.prompt(
+    'Enter your Twelve Data API key. It will be stored only in this browser localStorage, not in GitHub.',
+    existingKey
+  );
+
+  if (value === null) {
+    return;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    clearApiKey();
+    setFeedStatus('Twelve Data API key cleared. Set a key to load EUR/USD data.', 'idle');
+    showEmptyChart('Twelve Data API key required', 'Click Set API Key and paste your Twelve Data key to load EUR/USD OHLC data.');
+    return;
+  }
+
+  saveApiKey(trimmed);
+  setFeedStatus('Twelve Data API key saved in browser. Loading EUR/USD data...', 'idle');
+  startLiveRefresh();
+}
 
 function setFeedStatus(message, mode = 'idle') {
   if (elements.statusText) {
@@ -59,27 +100,31 @@ function isValidNumber(value) {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+function parseNumeric(value) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
+}
+
 function toOhlcSeries(payload) {
-  const result = payload?.chart?.result?.[0];
-  const timestamps = result?.timestamp || [];
-  const quote = result?.indicators?.quote?.[0] || {};
-  const opens = quote.open || [];
-  const highs = quote.high || [];
-  const lows = quote.low || [];
-  const closes = quote.close || [];
+  const values = Array.isArray(payload?.values) ? payload.values : [];
 
-  return timestamps
-    .map((timestamp, index) => {
-      const open = opens[index];
-      const high = highs[index];
-      const low = lows[index];
-      const close = closes[index];
+  return values
+    .map((row) => {
+      const timestamp = Date.parse(`${row.datetime}Z`);
+      const open = parseNumeric(row.open);
+      const high = parseNumeric(row.high);
+      const low = parseNumeric(row.low);
+      const close = parseNumeric(row.close);
 
-      if (![open, high, low, close].every(isValidNumber)) {
+      if (!Number.isFinite(timestamp) || ![open, high, low, close].every(isValidNumber)) {
         return null;
       }
 
-      return [timestamp * 1000, open, high, low, close];
+      return [timestamp, open, high, low, close];
     })
     .filter(Boolean)
     .sort((a, b) => a[0] - b[0]);
@@ -106,21 +151,42 @@ async function fetchWithTimeout(url, timeoutMs) {
 }
 
 async function fetchEurUsdOhlc() {
-  const url = CONFIG.yahooChartUrl(CONFIG.symbol);
-  const payload = await fetchWithTimeout(url, CONFIG.requestTimeoutMs);
-  const yahooError = payload?.chart?.error;
+  const apiKey = getApiKey();
 
-  if (yahooError) {
-    throw new Error(yahooError.description || yahooError.code || 'Yahoo Finance returned an error');
+  if (!apiKey) {
+    throw new Error('Twelve Data API key is required');
+  }
+
+  const url = CONFIG.twelveDataUrl(CONFIG.symbol, apiKey);
+  const payload = await fetchWithTimeout(url, CONFIG.requestTimeoutMs);
+
+  if (payload?.status === 'error' || payload?.code || payload?.message) {
+    throw new Error(payload.message || `Twelve Data API error${payload.code ? ` ${payload.code}` : ''}`);
   }
 
   const data = toOhlcSeries(payload);
 
   if (data.length < 10) {
-    throw new Error('Public market data response did not contain enough OHLC points');
+    throw new Error('Twelve Data response did not contain enough OHLC points');
   }
 
   return data;
+}
+
+function showEmptyChart(title, subtitle) {
+  state.chart = Highcharts.stockChart('highstockChart', {
+    chart: { backgroundColor: '#222222' },
+    title: {
+      text: title,
+      style: { color: 'rgba(255,255,255,0.92)' }
+    },
+    subtitle: {
+      text: subtitle,
+      style: { color: 'rgba(255,255,255,0.65)' }
+    },
+    credits: { enabled: false },
+    series: []
+  });
 }
 
 function buildChart(data) {
@@ -156,7 +222,7 @@ function buildChart(data) {
     },
 
     subtitle: {
-      text: 'Highstock with Stock Tools, SMA and RSI enabled. Source: Yahoo Finance public chart endpoint.',
+      text: 'Highstock with Stock Tools, SMA and RSI enabled. Source: Twelve Data public API.',
       align: 'left',
       style: {
         color: 'rgba(255,255,255,0.58)',
@@ -369,48 +435,38 @@ function buildChart(data) {
 
 async function refreshChart() {
   try {
-    setFeedStatus('Refreshing public EUR/USD data...', 'idle');
+    setFeedStatus('Refreshing Twelve Data EUR/USD data...', 'idle');
     const data = await fetchEurUsdOhlc();
 
-    if (!state.chart) {
+    if (!state.chart || !state.chart.get('eurusd-ohlc')) {
       buildChart(data);
     } else {
       const mainSeries = state.chart.get('eurusd-ohlc');
-
-      if (mainSeries) {
-        mainSeries.setData(data, true, false, false);
-      }
-
+      mainSeries.setData(data, true, false, false);
       state.lastPointTime = data[data.length - 1][0];
       state.chart.setTitle(
         { text: `${CONFIG.displaySymbol} Live OHLC` },
-        { text: 'Highstock with Stock Tools, SMA and RSI enabled. Source: Yahoo Finance public chart endpoint.' }
+        { text: 'Highstock with Stock Tools, SMA and RSI enabled. Source: Twelve Data public API.' }
       );
     }
 
     setFeedStatus(`Live public data loaded. Last point: ${formatTimestamp(state.lastPointTime)} UTC`, 'live');
   } catch (error) {
     console.error(error);
+    const needsKey = error?.message === 'Twelve Data API key is required';
     const message = error?.name === 'AbortError'
-      ? 'Public market data request timed out.'
-      : error?.message || 'Unable to load public market data.';
+      ? 'Twelve Data request timed out.'
+      : error?.message || 'Unable to load Twelve Data market data.';
 
-    setFeedStatus(`${message} Check browser console/network access.`, 'error');
+    setFeedStatus(`${message}${needsKey ? '.' : ' Check browser console/network access.'}`, needsKey ? 'idle' : 'error');
 
     if (!state.chart) {
-      Highcharts.stockChart('highstockChart', {
-        chart: { backgroundColor: '#222222' },
-        title: {
-          text: 'Unable to load EUR/USD public data',
-          style: { color: 'rgba(255,255,255,0.92)' }
-        },
-        subtitle: {
-          text: 'The browser could not fetch the Yahoo Finance chart endpoint. This may be caused by CORS, proxy, firewall or temporary provider limits.',
-          style: { color: 'rgba(255,255,255,0.65)' }
-        },
-        credits: { enabled: false },
-        series: []
-      });
+      showEmptyChart(
+        needsKey ? 'Twelve Data API key required' : 'Unable to load EUR/USD Twelve Data',
+        needsKey
+          ? 'Click Set API Key and paste your Twelve Data key. The key is stored only in your browser localStorage.'
+          : 'The browser could not fetch Twelve Data. Check the API key, quota, CORS, proxy, firewall or temporary provider limits.'
+      );
     }
   }
 }
@@ -430,6 +486,20 @@ window.addEventListener('DOMContentLoaded', () => {
   if (elements.symbolSelector) {
     elements.symbolSelector.addEventListener('change', () => {
       elements.symbolSelector.value = CONFIG.symbol;
+    });
+  }
+
+  if (elements.apiKeyButton) {
+    elements.apiKeyButton.addEventListener('click', promptForApiKey);
+  }
+
+  if (elements.clearApiKeyButton) {
+    elements.clearApiKeyButton.addEventListener('click', () => {
+      clearApiKey();
+      window.clearInterval(state.refreshTimer);
+      state.chart = null;
+      setFeedStatus('Twelve Data API key cleared. Set a key to load EUR/USD data.', 'idle');
+      showEmptyChart('Twelve Data API key required', 'Click Set API Key and paste your Twelve Data key to load EUR/USD OHLC data.');
     });
   }
 
