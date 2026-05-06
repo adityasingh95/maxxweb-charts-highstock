@@ -238,6 +238,28 @@ body {
   font-size: 13px;
 }
 
+.api-key-button {
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  background: #303030;
+  color: rgba(255, 255, 255, 0.9);
+  padding: 0 10px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.api-key-button:hover {
+  background: #3a3a3a;
+}
+
+.api-key-button.secondary {
+  background: #202020;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .source-badge {
   display: inline-flex;
   align-items: center;
