@@ -1,21 +1,45 @@
 const CONFIG = {
   symbol: 'EUR/USD',
   displaySymbol: 'EUR/USD',
+  defaultDataSource: 'twelvedata',
   twelveDataInterval: '5min',
-  outputSize: 500,
+  twelveDataOutputSize: 500,
+  fxApiHistoryDays: 90,
   refreshMs: 60_000,
   requestTimeoutMs: 12_000,
-  storageKey: 'maxxwebHighstock.twelveDataApiKey',
+  apiKeyStorageKey: 'maxxwebHighstock.twelveDataApiKey',
+  dataSourceStorageKey: 'maxxwebHighstock.dataSource',
   twelveDataUrl(symbol, apiKey) {
     const params = new URLSearchParams({
       symbol,
       interval: this.twelveDataInterval,
-      outputsize: String(this.outputSize),
+      outputsize: String(this.twelveDataOutputSize),
       order: 'ASC',
       apikey: apiKey
     });
 
     return `https://api.twelvedata.com/time_series?${params}`;
+  },
+  fxApiHistoryUrl(fromDate, toDate) {
+    const params = new URLSearchParams({
+      from: fromDate,
+      to: toDate
+    });
+
+    return `https://fxapi.app/api/history/EUR/USD.json?${params}`;
+  }
+};
+
+const DATA_SOURCES = {
+  twelvedata: {
+    label: 'Twelve Data',
+    badge: 'Twelve Data public API',
+    subtitle: 'Highstock with Stock Tools, SMA and RSI enabled. Source: Twelve Data intraday OHLC API.'
+  },
+  fxapi: {
+    label: 'fxapi.app',
+    badge: 'fxapi.app no-key API',
+    subtitle: 'Highstock with Stock Tools, SMA and RSI enabled. Source: fxapi.app daily rates, with demo OHLC synthesized from rate changes.'
   }
 };
 
@@ -41,30 +65,85 @@ const LIGHT_THEME = {
 const state = {
   chart: null,
   refreshTimer: null,
-  lastPointTime: null
+  lastPointTime: null,
+  activeSource: CONFIG.defaultDataSource
 };
 
 const elements = {
   statusText: document.getElementById('feedStatus'),
   statusDot: document.getElementById('statusDot'),
   symbolSelector: document.getElementById('symbolSelector'),
+  dataSourceSelector: document.getElementById('dataSourceSelector'),
+  sourceBadge: document.getElementById('sourceBadge'),
   apiKeyButton: document.getElementById('apiKeyButton'),
   clearApiKeyButton: document.getElementById('clearApiKeyButton')
 };
 
 function getApiKey() {
-  return window.localStorage.getItem(CONFIG.storageKey) || '';
+  return window.localStorage.getItem(CONFIG.apiKeyStorageKey) || '';
 }
 
 function saveApiKey(apiKey) {
-  window.localStorage.setItem(CONFIG.storageKey, apiKey.trim());
+  window.localStorage.setItem(CONFIG.apiKeyStorageKey, apiKey.trim());
 }
 
 function clearApiKey() {
-  window.localStorage.removeItem(CONFIG.storageKey);
+  window.localStorage.removeItem(CONFIG.apiKeyStorageKey);
+}
+
+function getStoredDataSource() {
+  const stored = window.localStorage.getItem(CONFIG.dataSourceStorageKey);
+  return DATA_SOURCES[stored] ? stored : CONFIG.defaultDataSource;
+}
+
+function saveDataSource(source) {
+  window.localStorage.setItem(CONFIG.dataSourceStorageKey, source);
+}
+
+function setFeedStatus(message, mode = 'idle') {
+  if (elements.statusText) {
+    elements.statusText.textContent = message;
+  }
+
+  if (elements.statusDot) {
+    elements.statusDot.className = `feed-dot feed-dot-${mode}`;
+  }
+}
+
+function updateSourceControls() {
+  const sourceConfig = DATA_SOURCES[state.activeSource];
+
+  if (elements.dataSourceSelector) {
+    elements.dataSourceSelector.value = state.activeSource;
+  }
+
+  if (elements.sourceBadge) {
+    elements.sourceBadge.textContent = sourceConfig.badge;
+  }
+
+  const usesTwelveData = state.activeSource === 'twelvedata';
+
+  if (elements.apiKeyButton) {
+    elements.apiKeyButton.disabled = !usesTwelveData;
+    elements.apiKeyButton.title = usesTwelveData
+      ? 'Set Twelve Data API key'
+      : 'fxapi.app mode does not require an API key';
+  }
+
+  if (elements.clearApiKeyButton) {
+    elements.clearApiKeyButton.disabled = !usesTwelveData;
+    elements.clearApiKeyButton.title = usesTwelveData
+      ? 'Clear Twelve Data API key from this browser'
+      : 'fxapi.app mode does not require an API key';
+  }
 }
 
 function promptForApiKey() {
+  if (state.activeSource !== 'twelvedata') {
+    setFeedStatus('fxapi.app mode does not require an API key.', 'live');
+    return;
+  }
+
   const existingKey = getApiKey();
   const value = window.prompt(
     'Enter your Twelve Data API key. It will be stored only in this browser localStorage, not in GitHub.',
@@ -89,16 +168,6 @@ function promptForApiKey() {
   startLiveRefresh();
 }
 
-function setFeedStatus(message, mode = 'idle') {
-  if (elements.statusText) {
-    elements.statusText.textContent = message;
-  }
-
-  if (elements.statusDot) {
-    elements.statusDot.className = `feed-dot feed-dot-${mode}`;
-  }
-}
-
 function formatTimestamp(value) {
   if (!value) {
     return 'n/a';
@@ -115,6 +184,10 @@ function formatTimestamp(value) {
   }).format(new Date(value));
 }
 
+function formatDate(date) {
+  return date.toISOString().slice(0, 10);
+}
+
 function isValidNumber(value) {
   return typeof value === 'number' && Number.isFinite(value);
 }
@@ -128,7 +201,7 @@ function parseNumeric(value) {
   return Number.isFinite(numberValue) ? numberValue : null;
 }
 
-function toOhlcSeries(payload) {
+function toTwelveDataOhlcSeries(payload) {
   const values = Array.isArray(payload?.values) ? payload.values : [];
 
   return values
@@ -147,6 +220,29 @@ function toOhlcSeries(payload) {
     })
     .filter(Boolean)
     .sort((a, b) => a[0] - b[0]);
+}
+
+function toFxApiSyntheticOhlcSeries(payload) {
+  const rates = Array.isArray(payload?.rates) ? payload.rates : [];
+  const sortedRates = rates
+    .map((row) => ({
+      timestamp: Date.parse(`${row.date}T00:00:00Z`),
+      rate: parseNumeric(row.rate)
+    }))
+    .filter((row) => Number.isFinite(row.timestamp) && isValidNumber(row.rate))
+    .sort((a, b) => a.timestamp - b.timestamp);
+
+  return sortedRates.map((row, index) => {
+    const previousClose = index > 0 ? sortedRates[index - 1].rate : row.rate;
+    const open = previousClose;
+    const close = row.rate;
+    const move = Math.abs(close - open);
+    const padding = Math.max(move * 0.35, close * 0.00025);
+    const high = Math.max(open, close) + padding;
+    const low = Math.min(open, close) - padding;
+
+    return [row.timestamp, open, high, low, close];
+  });
 }
 
 async function fetchWithTimeout(url, timeoutMs) {
@@ -169,7 +265,7 @@ async function fetchWithTimeout(url, timeoutMs) {
   }
 }
 
-async function fetchEurUsdOhlc() {
+async function fetchTwelveDataOhlc() {
   const apiKey = getApiKey();
 
   if (!apiKey) {
@@ -183,13 +279,41 @@ async function fetchEurUsdOhlc() {
     throw new Error(payload.message || `Twelve Data API error${payload.code ? ` ${payload.code}` : ''}`);
   }
 
-  const data = toOhlcSeries(payload);
+  const data = toTwelveDataOhlcSeries(payload);
 
   if (data.length < 10) {
     throw new Error('Twelve Data response did not contain enough OHLC points');
   }
 
   return data;
+}
+
+async function fetchFxApiOhlc() {
+  const toDate = new Date();
+  const fromDate = new Date();
+  fromDate.setUTCDate(toDate.getUTCDate() - CONFIG.fxApiHistoryDays);
+
+  const url = CONFIG.fxApiHistoryUrl(formatDate(fromDate), formatDate(toDate));
+  const payload = await fetchWithTimeout(url, CONFIG.requestTimeoutMs);
+  const data = toFxApiSyntheticOhlcSeries(payload);
+
+  if (data.length < 10) {
+    throw new Error('fxapi.app response did not contain enough historical rate points');
+  }
+
+  return data;
+}
+
+function getActiveSourceConfig() {
+  return DATA_SOURCES[state.activeSource] || DATA_SOURCES[CONFIG.defaultDataSource];
+}
+
+async function fetchActiveOhlc() {
+  if (state.activeSource === 'fxapi') {
+    return fetchFxApiOhlc();
+  }
+
+  return fetchTwelveDataOhlc();
 }
 
 function showEmptyChart(title, subtitle) {
@@ -210,6 +334,7 @@ function showEmptyChart(title, subtitle) {
 
 function buildChart(data) {
   state.lastPointTime = data[data.length - 1][0];
+  const sourceConfig = getActiveSourceConfig();
 
   Highcharts.setOptions({
     lang: {
@@ -241,7 +366,7 @@ function buildChart(data) {
     },
 
     subtitle: {
-      text: 'Highstock with Stock Tools, SMA and RSI enabled. Source: Twelve Data public API.',
+      text: sourceConfig.subtitle,
       align: 'left',
       style: {
         color: LIGHT_THEME.mutedText,
@@ -256,7 +381,7 @@ function buildChart(data) {
     },
 
     rangeSelector: {
-      selected: 1,
+      selected: state.activeSource === 'fxapi' ? 3 : 1,
       inputEnabled: true,
       buttons: [
         { type: 'hour', count: 1, text: '1h' },
@@ -453,9 +578,12 @@ function buildChart(data) {
 }
 
 async function refreshChart() {
+  const sourceConfig = getActiveSourceConfig();
+
   try {
-    setFeedStatus('Refreshing Twelve Data EUR/USD data...', 'idle');
-    const data = await fetchEurUsdOhlc();
+    updateSourceControls();
+    setFeedStatus(`Refreshing ${sourceConfig.label} EUR/USD data...`, 'idle');
+    const data = await fetchActiveOhlc();
 
     if (!state.chart || !state.chart.get('eurusd-ohlc')) {
       buildChart(data);
@@ -465,26 +593,26 @@ async function refreshChart() {
       state.lastPointTime = data[data.length - 1][0];
       state.chart.setTitle(
         { text: `${CONFIG.displaySymbol} Live OHLC` },
-        { text: 'Highstock with Stock Tools, SMA and RSI enabled. Source: Twelve Data public API.' }
+        { text: sourceConfig.subtitle }
       );
     }
 
-    setFeedStatus(`Live public data loaded. Last point: ${formatTimestamp(state.lastPointTime)} UTC`, 'live');
+    setFeedStatus(`${sourceConfig.label} data loaded. Last point: ${formatTimestamp(state.lastPointTime)} UTC`, 'live');
   } catch (error) {
     console.error(error);
     const needsKey = error?.message === 'Twelve Data API key is required';
     const message = error?.name === 'AbortError'
-      ? 'Twelve Data request timed out.'
-      : error?.message || 'Unable to load Twelve Data market data.';
+      ? `${sourceConfig.label} request timed out.`
+      : error?.message || `Unable to load ${sourceConfig.label} market data.`;
 
     setFeedStatus(`${message}${needsKey ? '.' : ' Check browser console/network access.'}`, needsKey ? 'idle' : 'error');
 
     if (!state.chart) {
       showEmptyChart(
-        needsKey ? 'Twelve Data API key required' : 'Unable to load EUR/USD Twelve Data',
+        needsKey ? 'Twelve Data API key required' : `Unable to load EUR/USD from ${sourceConfig.label}`,
         needsKey
-          ? 'Click Set API Key and paste your Twelve Data key. The key is stored only in your browser localStorage.'
-          : 'The browser could not fetch Twelve Data. Check the API key, quota, CORS, proxy, firewall or temporary provider limits.'
+          ? 'Click Set API Key and paste your Twelve Data key, or switch the Source selector to fxapi.app for no-key daily data.'
+          : `The browser could not fetch ${sourceConfig.label}. Check provider availability, CORS, quota, proxy or firewall limits.`
       );
     }
   }
@@ -496,15 +624,41 @@ function startLiveRefresh() {
   state.refreshTimer = window.setInterval(refreshChart, CONFIG.refreshMs);
 }
 
+function switchDataSource(source) {
+  if (!DATA_SOURCES[source]) {
+    return;
+  }
+
+  state.activeSource = source;
+  saveDataSource(source);
+  updateSourceControls();
+
+  if (state.chart && typeof state.chart.destroy === 'function') {
+    state.chart.destroy();
+  }
+
+  state.chart = null;
+  startLiveRefresh();
+}
+
 window.addEventListener('DOMContentLoaded', () => {
   if (!window.Highcharts) {
     setFeedStatus('Highcharts could not be loaded from the CDN.', 'error');
     return;
   }
 
+  state.activeSource = getStoredDataSource();
+  updateSourceControls();
+
   if (elements.symbolSelector) {
     elements.symbolSelector.addEventListener('change', () => {
       elements.symbolSelector.value = CONFIG.symbol;
+    });
+  }
+
+  if (elements.dataSourceSelector) {
+    elements.dataSourceSelector.addEventListener('change', (event) => {
+      switchDataSource(event.target.value);
     });
   }
 
@@ -518,7 +672,7 @@ window.addEventListener('DOMContentLoaded', () => {
       window.clearInterval(state.refreshTimer);
       state.chart = null;
       setFeedStatus('Twelve Data API key cleared. Set a key to load EUR/USD data.', 'idle');
-      showEmptyChart('Twelve Data API key required', 'Click Set API Key and paste your Twelve Data key to load EUR/USD OHLC data.');
+      showEmptyChart('Twelve Data API key required', 'Click Set API Key and paste your Twelve Data key, or switch Source to fxapi.app for no-key daily data.');
     });
   }
 
