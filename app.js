@@ -19,6 +19,25 @@ const CONFIG = {
   }
 };
 
+const LIGHT_THEME = {
+  chartBackground: '#ffffff',
+  plotBackground: '#ffffff',
+  text: '#1f2937',
+  mutedText: '#4b5563',
+  grid: '#e5e7eb',
+  axis: '#9ca3af',
+  rangeButton: '#f3f4f6',
+  rangeButtonHover: '#e5e7eb',
+  rangeButtonSelected: '#d1d5db',
+  tooltipBackground: '#ffffff',
+  tooltipBorder: '#d1d5db',
+  navigatorLine: '#6b7280',
+  navigatorMask: 'rgba(107, 114, 128, 0.16)',
+  scrollbarTrack: '#f3f4f6',
+  scrollbarBar: '#cbd5e1',
+  lastPrice: '#d97706'
+};
+
 const state = {
   chart: null,
   refreshTimer: null,
@@ -175,14 +194,14 @@ async function fetchEurUsdOhlc() {
 
 function showEmptyChart(title, subtitle) {
   state.chart = Highcharts.stockChart('highstockChart', {
-    chart: { backgroundColor: '#222222' },
+    chart: { backgroundColor: LIGHT_THEME.chartBackground },
     title: {
       text: title,
-      style: { color: 'rgba(255,255,255,0.92)' }
+      style: { color: LIGHT_THEME.text }
     },
     subtitle: {
       text: subtitle,
-      style: { color: 'rgba(255,255,255,0.65)' }
+      style: { color: LIGHT_THEME.mutedText }
     },
     credits: { enabled: false },
     series: []
@@ -203,8 +222,8 @@ function buildChart(data) {
 
   state.chart = Highcharts.stockChart('highstockChart', {
     chart: {
-      backgroundColor: '#222222',
-      plotBackgroundColor: '#222222',
+      backgroundColor: LIGHT_THEME.chartBackground,
+      plotBackgroundColor: LIGHT_THEME.plotBackground,
       spacingTop: 10,
       spacingRight: 18,
       spacingBottom: 10,
@@ -215,7 +234,7 @@ function buildChart(data) {
       text: `${CONFIG.displaySymbol} Live OHLC`,
       align: 'left',
       style: {
-        color: 'rgba(255,255,255,0.92)',
+        color: LIGHT_THEME.text,
         fontSize: '15px',
         fontWeight: '600'
       }
@@ -225,7 +244,7 @@ function buildChart(data) {
       text: 'Highstock with Stock Tools, SMA and RSI enabled. Source: Twelve Data public API.',
       align: 'left',
       style: {
-        color: 'rgba(255,255,255,0.58)',
+        color: LIGHT_THEME.mutedText,
         fontSize: '12px'
       }
     },
@@ -246,17 +265,17 @@ function buildChart(data) {
         { type: 'all', text: 'All' }
       ],
       buttonTheme: {
-        fill: '#303030',
-        stroke: 'rgba(255,255,255,0.1)',
-        style: { color: 'rgba(255,255,255,0.78)' },
+        fill: LIGHT_THEME.rangeButton,
+        stroke: '#d1d5db',
+        style: { color: LIGHT_THEME.text },
         states: {
-          hover: { fill: '#3a3a3a' },
-          select: { fill: '#6d6d6d', style: { color: '#ffffff' } }
+          hover: { fill: LIGHT_THEME.rangeButtonHover },
+          select: { fill: LIGHT_THEME.rangeButtonSelected, style: { color: '#111827' } }
         }
       },
-      inputBoxBorderColor: 'rgba(255,255,255,0.18)',
-      inputStyle: { color: 'rgba(255,255,255,0.82)' },
-      labelStyle: { color: 'rgba(255,255,255,0.68)' }
+      inputBoxBorderColor: '#d1d5db',
+      inputStyle: { color: LIGHT_THEME.text },
+      labelStyle: { color: LIGHT_THEME.mutedText }
     },
 
     stockTools: {
@@ -292,19 +311,19 @@ function buildChart(data) {
 
     tooltip: {
       split: true,
-      backgroundColor: '#151515',
-      borderColor: 'rgba(255,255,255,0.18)',
-      style: { color: '#ffffff' },
+      backgroundColor: LIGHT_THEME.tooltipBackground,
+      borderColor: LIGHT_THEME.tooltipBorder,
+      style: { color: LIGHT_THEME.text },
       valueDecimals: 5
     },
 
     xAxis: {
-      gridLineColor: 'rgba(255,255,255,0.06)',
-      lineColor: 'rgba(255,255,255,0.14)',
-      tickColor: 'rgba(255,255,255,0.14)',
-      labels: { style: { color: 'rgba(255,255,255,0.72)' } },
+      gridLineColor: LIGHT_THEME.grid,
+      lineColor: LIGHT_THEME.axis,
+      tickColor: LIGHT_THEME.axis,
+      labels: { style: { color: LIGHT_THEME.mutedText } },
       crosshair: {
-        color: 'rgba(255,255,255,0.22)',
+        color: '#9ca3af',
         width: 1
       }
     },
@@ -316,10 +335,10 @@ function buildChart(data) {
         labels: {
           align: 'right',
           x: -3,
-          style: { color: 'rgba(255,255,255,0.72)' }
+          style: { color: LIGHT_THEME.mutedText }
         },
-        title: { text: 'Price', style: { color: 'rgba(255,255,255,0.68)' } },
-        gridLineColor: 'rgba(255,255,255,0.08)',
+        title: { text: 'Price', style: { color: LIGHT_THEME.mutedText } },
+        gridLineColor: LIGHT_THEME.grid,
         opposite: true
       },
       {
@@ -329,42 +348,42 @@ function buildChart(data) {
         labels: {
           align: 'right',
           x: -3,
-          style: { color: 'rgba(255,255,255,0.72)' }
+          style: { color: LIGHT_THEME.mutedText }
         },
-        title: { text: 'RSI', style: { color: 'rgba(255,255,255,0.68)' } },
-        gridLineColor: 'rgba(255,255,255,0.08)',
+        title: { text: 'RSI', style: { color: LIGHT_THEME.mutedText } },
+        gridLineColor: LIGHT_THEME.grid,
         opposite: true,
         min: 0,
         max: 100,
         plotLines: [
-          { value: 30, color: 'rgba(255,255,255,0.22)', width: 1, dashStyle: 'ShortDash' },
-          { value: 70, color: 'rgba(255,255,255,0.22)', width: 1, dashStyle: 'ShortDash' }
+          { value: 30, color: '#cbd5e1', width: 1, dashStyle: 'ShortDash' },
+          { value: 70, color: '#cbd5e1', width: 1, dashStyle: 'ShortDash' }
         ]
       }
     ],
 
     navigator: {
       enabled: true,
-      outlineColor: 'rgba(255,255,255,0.16)',
-      maskFill: 'rgba(120,120,120,0.18)',
+      outlineColor: '#cbd5e1',
+      maskFill: LIGHT_THEME.navigatorMask,
       series: {
-        color: '#9aa4b2',
-        lineColor: '#9aa4b2'
+        color: LIGHT_THEME.navigatorLine,
+        lineColor: LIGHT_THEME.navigatorLine
       },
       xAxis: {
-        labels: { style: { color: 'rgba(255,255,255,0.56)' } }
+        labels: { style: { color: LIGHT_THEME.mutedText } }
       }
     },
 
     scrollbar: {
       enabled: true,
-      barBackgroundColor: '#4b4b4b',
-      barBorderColor: '#4b4b4b',
-      buttonBackgroundColor: '#333333',
-      buttonBorderColor: '#333333',
-      rifleColor: 'rgba(255,255,255,0.55)',
-      trackBackgroundColor: '#262626',
-      trackBorderColor: '#262626'
+      barBackgroundColor: LIGHT_THEME.scrollbarBar,
+      barBorderColor: LIGHT_THEME.scrollbarBar,
+      buttonBackgroundColor: LIGHT_THEME.rangeButton,
+      buttonBorderColor: '#cbd5e1',
+      rifleColor: '#64748b',
+      trackBackgroundColor: LIGHT_THEME.scrollbarTrack,
+      trackBorderColor: '#e5e7eb'
     },
 
     plotOptions: {
@@ -375,10 +394,10 @@ function buildChart(data) {
         }
       },
       candlestick: {
-        color: '#d95f5f',
-        upColor: '#38c172',
-        lineColor: '#d95f5f',
-        upLineColor: '#38c172'
+        color: '#ef4444',
+        upColor: '#22c55e',
+        lineColor: '#b91c1c',
+        upLineColor: '#15803d'
       }
     },
 
@@ -391,11 +410,11 @@ function buildChart(data) {
         tooltip: { valueDecimals: 5 },
         lastPrice: {
           enabled: true,
-          color: '#f2b84b',
+          color: LIGHT_THEME.lastPrice,
           label: {
             enabled: true,
-            backgroundColor: '#f2b84b',
-            style: { color: '#111111' }
+            backgroundColor: LIGHT_THEME.lastPrice,
+            style: { color: '#ffffff' }
           }
         }
       },
