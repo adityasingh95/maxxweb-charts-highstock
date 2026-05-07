@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MaxxWeb Highstock Charts Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://code.highcharts.com/css/stocktools/gui.css" />
+    <link rel="stylesheet" href="https://code.highcharts.com/css/annotations/popup.css" />
+    <link rel="stylesheet" href="./styles.css?v=chart-light-bottom-left-1" />
+  </head>
+  <body>
+    <nav name="loggedInNavbar" class="logged-in-navbar">
+      <div class="nav-left">
+        <span class="brand-wrap">
+          <a class="brand-link" href="#" aria-label="MaxxWeb home">
+            <img src="https://raw.githubusercontent.com/adityasingh95/maxxweb-charts-demo/main/assets/images/logo.png" alt="logo" height="45" />
+          </a>
+        </span>
+
+        <button aria-label="Toggle navigation" class="navbar-toggler" type="button">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="primary-nav" aria-label="Primary">
+          <a href="#" class="nav-link">Trading</a>
+          <a href="#" class="nav-link">Market Watch</a>
+          <a href="#" class="nav-link">Trade History</a>
+          <a href="#" class="nav-link active" aria-current="page">Charting</a>
+          <a href="#" class="nav-link">Collateral</a>
+        </div>
+      </div>
+
+      <div class="nav-right" aria-label="User and utilities">
+        <a role="button" class="nav-link utility-link" href="#"
+          >Queued Orders: <span class="queued-orders-number">0</span></a
+        >
+        <a role="button" class="nav-link utility-link dropdown-link" href="#">Limit</a>
+        <a role="button" class="nav-link utility-link dropdown-link" href="#">Market Making_ADMIN</a>
+        <a role="button" class="nav-link utility-link dropdown-link user-link" href="#">
+          <span class="icon-wrap">
+            <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" class="nav-icon user-icon" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </span>
+          <span>Aditya1</span>
+        </a>
+        <span class="status-dot-wrap" aria-hidden="true">
+          <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" class="nav-icon socket-connected" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+            <path d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111 248-248S393 8 256 8z"></path>
+          </svg>
+        </span>
+        <a role="button" class="nav-link utility-link icon-only" href="#" aria-label="Theme selector">
+          <span class="icon-wrap">
+            <svg stroke="currentColor" fill="none" stroke-width="0" viewBox="0 0 24 24" class="nav-icon theme-icon" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M11 17H4C2.34315 17 1 15.6569 1 14V6C1 4.34315 2.34315 3 4 3H20C21.6569 3 23 4.34315 23 6V14C23 15.6569 21.6569 17 20 17H13V19H16C16.5523 19 17 19.4477 17 20C17 20.5523 16.5523 21 16 21H8C7.44772 21 7 20.5523 7 20C7 19.4477 7.44772 19 8 19H11V17ZM4 5H20C20.5523 5 21 5.44772 21 6V14C21 14.5523 20.5523 15 20 15H4C3.44772 15 3 14.5523 3 14V6C3 5.44772 3.44772 5 4 5Z" fill="currentColor"></path>
+            </svg>
+          </span>
+        </a>
+        <a role="button" class="nav-link utility-link icon-only" href="#" aria-label="Help">
+          <span class="icon-wrap">
+            <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16" class="nav-icon help-menu" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+              <path fill-rule="evenodd" d="M16 8A8 8 0 110 8a8 8 0 0116 0zM6.57 6.033H5.25C5.22 4.147 6.68 3.5 8.006 3.5c1.397 0 2.673.73 2.673 2.24 0 1.08-.635 1.594-1.244 2.057-.737.559-1.01.768-1.01 1.486v.355H7.117l-.007-.463c-.038-.927.495-1.498 1.168-1.987.59-.444.965-.736.965-1.371 0-.825-.628-1.168-1.314-1.168-.901 0-1.358.603-1.358 1.384zm1.251 6.443c-.584 0-1.009-.394-1.009-.927 0-.552.425-.94 1.01-.94.609 0 1.028.388 1.028.94 0 .533-.42.927-1.029.927z" clip-rule="evenodd"></path>
+            </svg>
+          </span>
+        </a>
+      </div>
+    </nav>
+
+    <main class="app-shell">
+      <section class="chart-shell" aria-label="Highstock advanced chart">
+        <header class="chart-toolbar">
+          <div class="chart-toolbar-left">
+            <label for="symbolSelector">Symbol</label>
+            <select id="symbolSelector" aria-label="Chart symbol">
+              <option value="EUR/USD" selected>EUR/USD</option>
+            </select>
+            <label for="dataSourceSelector">Source</label>
+            <select id="dataSourceSelector" aria-label="Market data source">
+              <option value="twelvedata" selected>Twelve Data</option>
+              <option value="fxapi">fxapi.app</option>
+            </select>
+            <span id="sourceBadge" class="source-badge">Twelve Data public API</span>
+            <button id="apiKeyButton" class="api-key-button" type="button">Set API Key</button>
+            <button id="clearApiKeyButton" class="api-key-button secondary" type="button">Clear Key</button>
+          </div>
+          <div class="chart-toolbar-right">
+            <span id="statusDot" class="feed-dot feed-dot-idle" aria-hidden="true"></span>
+            <span id="feedStatus" class="feed-status">Preparing chart...</span>
+          </div>
+        </header>
+
+        <div class="chart-body">
+          <div id="highstockChart" class="highstock-chart" aria-label="EUR/USD OHLC Highstock chart"></div>
+        </div>
+      </section>
+    </main>
+
+    <script src="https://code.highcharts.com/stock/highstock.js"></script>
+    <script src="https://code.highcharts.com/stock/indicators/indicators.js"></script>
+    <script src="https://code.highcharts.com/stock/indicators/rsi.js"></script>
+    <script src="https://code.highcharts.com/modules/drag-panes.js"></script>
+    <script src="https://code.highcharts.com/modules/annotations-advanced.js"></script>
+    <script src="https://code.highcharts.com/modules/price-indicator.js"></script>
+    <script src="https://code.highcharts.com/modules/full-screen.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+    <script src="https://code.highcharts.com/modules/stock-tools.js"></script>
+    <script src="./app.js?v=fxapi-toggle-1"></script>
+  </body>
+</html>
