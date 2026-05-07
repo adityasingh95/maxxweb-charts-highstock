@@ -310,91 +310,12 @@ body { min-width: 1200px; }
 .highcharts-yaxis-grid .highcharts-grid-line { stroke: rgba(255, 255, 255, 0.08); }
 .highcharts-scrollbar-track { fill: #2b2b2b; }
 
-.highcharts-bindings-wrapper {
-  z-index: 25 !important;
-  width: 50px !important;
-  background: #111111 !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.14) !important;
-  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.34);
-}
-
-.highcharts-bindings-wrapper ul,
-.highcharts-bindings-wrapper li,
-.highcharts-bindings-wrapper .highcharts-menu-wrapper,
-.highcharts-bindings-wrapper .highcharts-menu-item,
-.highcharts-bindings-wrapper .highcharts-menu-item-wrapper {
-  background-color: #111111 !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-  list-style: none !important;
-}
-
-.highcharts-bindings-wrapper .highcharts-menu-wrapper {
-  width: 50px !important;
-  border: 0 !important;
-}
-
-.highcharts-bindings-wrapper .highcharts-menu-item-btn,
-.highcharts-bindings-wrapper button.highcharts-menu-item-btn {
-  width: 34px !important;
-  height: 34px !important;
-  min-width: 34px !important;
-  min-height: 34px !important;
-  margin: 5px 8px !important;
-  border: 1px solid rgba(255, 255, 255, 0.22) !important;
-  border-radius: 5px !important;
-  background-color: #222222 !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 1px 2px rgba(0, 0, 0, 0.36) !important;
-  opacity: 0.94 !important;
-}
-
-.highcharts-bindings-wrapper .highcharts-menu-item-btn:hover,
-.highcharts-bindings-wrapper .highcharts-menu-item-btn.highcharts-active,
-.highcharts-bindings-wrapper .highcharts-menu-item-btn.highcharts-current {
-  background-color: #303030 !important;
-  border-color: rgba(255, 255, 255, 0.5) !important;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08), 0 2px 4px rgba(0, 0, 0, 0.42) !important;
-  opacity: 1 !important;
-}
-
-.highcharts-bindings-wrapper .highcharts-menu-item-btn.disabled,
-.highcharts-bindings-wrapper .highcharts-menu-item-btn[disabled] {
-  background-color: #181818 !important;
-  opacity: 0.4 !important;
-}
-
-.highcharts-bindings-wrapper .highcharts-separator {
-  width: 32px !important;
-  height: 1px !important;
-  margin: 8px auto !important;
-  background: rgba(255, 255, 255, 0.16) !important;
-  border: 0 !important;
-}
-
-.highcharts-bindings-wrapper .highcharts-arrow-left,
-.highcharts-bindings-wrapper .highcharts-arrow-right,
-.highcharts-bindings-wrapper .highcharts-toggle-toolbar {
-  width: 22px !important;
-  height: 22px !important;
-  margin: 6px auto !important;
-  border-radius: 999px !important;
-  background-color: #222222 !important;
-  border: 1px solid rgba(255, 255, 255, 0.24) !important;
-  opacity: 0.95 !important;
-}
-
 .highcharts-submenu-wrapper,
 .highcharts-popup {
   background: #1a1a1a !important;
   border: 1px solid rgba(255, 255, 255, 0.14) !important;
   color: rgba(255, 255, 255, 0.88) !important;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42) !important;
-}
-
-.highcharts-menu-wrapper {
-  background: #1d1d1d;
-  border: 1px solid var(--border-soft);
-  color: var(--text);
 }
 
 @media (max-width: 1440px) {
